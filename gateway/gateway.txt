@@ -1,0 +1,38 @@
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+# Alignment Logic: Từ khóa cấm
+FORBIDDEN = ["os.remove", "subprocess", "rm -rf", "sh", "cat /etc/shadow"]
+
+def watchdog_check(thought, code):
+    # Kiểm tra sự lừa dối cơ bản
+    if "hide" in thought.lower() or "secret" in thought.lower():
+        return False, "Cảnh báo: Phát hiện ý định che giấu!"
+    # Kiểm tra mã độc
+    for word in FORBIDDEN:
+        if word in code:
+            return False, f"Vi phạm: Mã chứa từ khóa nguy hiểm '{word}'"
+    return True, "Hợp lệ"
+
+@app.route('/request_action', methods=['POST'])
+def handle_request():
+    data = request.json
+    thought = data.get("thought", "")
+    code = data.get("code", "")
+    
+    is_safe, msg = watchdog_check(thought, code)
+    if is_safe:
+        print(f"[WATCHDOG] Duyệt lệnh: {code}")
+        try:
+            res = requests.post("http://executor:5001/execute", json={"code": code})
+            return res.json()
+        except:
+            return jsonify({"error": "Không thể kết nối Executor"}), 500
+    else:
+        print(f"[WATCHDOG] CHẶN: {msg}")
+        return jsonify({"status": "BLOCKED", "reason": msg}), 403
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000)

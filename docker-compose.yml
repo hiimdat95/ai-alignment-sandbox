@@ -1,0 +1,39 @@
+services:
+  executor:
+    image: python:3.9-slim
+    container_name: sandbox_executor
+    working_dir: /app
+    volumes:
+      - ./executor:/app
+    # Cài đặt thư viện trước khi chạy server
+    command: >
+      sh -c "pip install --no-cache-dir flask requests && python server.py"
+    networks:
+      - secure_backlink
+
+  gateway:
+    image: python:3.9-slim
+    container_name: sandbox_gateway
+    working_dir: /app
+    volumes:
+      - ./gateway:/app
+    command: >
+      sh -c "pip install --no-cache-dir flask requests google-genai && python gateway.py"
+    networks:
+      - secure_backlink
+      - agent_network
+
+  agent:
+    image: python:3.9-slim
+    container_name: sandbox_agent
+    working_dir: /app
+    volumes:
+      - ./agent:/app
+    command: >
+      sh -c "pip install --no-cache-dir flask requests && python agent_logic.py"
+    networks:
+      - agent_network
+
+networks:
+  secure_backlink:
+  agent_network:
